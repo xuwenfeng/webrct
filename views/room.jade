@@ -1,0 +1,20 @@
+extends layout
+
+block content
+  div(class="wrap home-page")
+    div(class="member-wrap")
+      div(class="mw-photo")
+        span(class="icon iconfont") &#xe647;
+      div(class="mw-name")
+        span 账号名称：
+        span(class="mwn-name" id="mwnName")
+    div(class="room-wrap")
+      div(class="rw-input")
+        input(type="text" class="rw-roome-name" placeholder="请输入会议房间名" id="roomName")
+        p 如果房间尚未创建，将会自动创建一个房间
+      div(class="rw-ctr")
+        button(class="yhm" id="nextBtn") 会议房间
+  script(src='/javascripts/common.js')      
+  script(src='/javascripts/room.js')
+  
+

@@ -1,0 +1,46 @@
+extends layout
+
+block content
+  div(class="video-page")
+    div(class="top-wrap")
+      div(class="member-wrap")
+        div(class="mw-photo")
+          span(class="icon iconfont") &#xe647;
+        div(class="mw-name")
+          span(class="mwn-name" id="mwnName") xuwenfeng
+    div(class="video-wrap")
+      div(class="video-box" id="mainVideo")
+      div(class="vedio-list" id="vedioList")
+    div(class="control-wrap" id="controlBox")
+      div(class="cw-left")
+        //- a(href="javascript:;" data-id="screenshotBtn")
+        //-    span(class='xline')
+        //-    span(class="icon iconfont") &#xe654;
+        a(href="javascript:;" data-id="playBtn")
+           span(class='xline')
+           span(class="icon iconfont") &#xe617;
+      a(href="javascript:;" class="switchBtn" data-id="switchBtn")
+        span(class="icon iconfont") &#xe668;
+      div(class="cw-right")
+        a(href="javascript:;" data-id="soundBtn")
+           span(class='xline')
+           span(class="icon iconfont") &#xe649;
+  div(class="chatBox" id="chatBox")
+    div(class="chatMain")
+      ul(id="chatMessage")
+      //-  li
+      //-   span xiaoming
+      //-   p 方式地方是的方式分是的方式都发生的
+      //-  li.me
+      //-   span xiaoming
+      //-   p 方式地方是的方式分是的方式都发生的
+
+    div(class="chatBottom")   
+      textarea(class="ttaBox" id="ttaBox")
+      a(href="javascript:;" class="sendMsg") 发送 
+  style.
+    body{background:#000}
+  script(src='/javascripts/adapter/adapter.js')  
+  script(src='/javascripts/common.js')   
+  script(src='/javascripts/webRTC.js')    
+  script(src='/javascripts/meeting.js')

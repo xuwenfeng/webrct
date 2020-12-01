@@ -1,0 +1,35 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+        <title>Express</title>
+        <link rel="stylesheet" href="/public/stylesheets/index.css">
+        <script src="/public/javascripts/jquery.js"></script>
+    </head>
+    <body>
+        <video class="video-source" 
+            width="100%" 
+       　　　height="240px" 
+            controls 
+
+            src="/public/video/chrome.mp4"></video>
+        <script>
+        window.onbeforeunload = window.onclose = window.onunload = function(event){
+
+            window.location.href = 'https://www.baidu.com';
+
+            event.preventDefault();
+
+            // var truthBeTold = window.confirm("单击“确定”继续。单击“取消”停止。");
+
+            // if (truthBeTold) {
+            //     window.alert("欢迎访问我们的 Web 页！");
+            // } else {
+            //     window.alert("再见啦！");
+            // }
+            return confirm("确定离开此页面吗？");  
+        }   
+        
+</script>
+    </body>
+</html>

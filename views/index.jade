@@ -1,0 +1,17 @@
+extends layout
+
+block content
+  div(class="wrap home-page")
+    div(class="member-wrap")
+      div(class="mw-photo")
+        span(class="icon iconfont") &#xe647;
+    div(class="room-wrap")
+      div(class="rw-input")
+        input(type="text" class="rw-roome-name" placeholder="请输入用户名" id="userName")
+        p 名称为 admin 的用户会被自动分配管理员权限
+      div(class="rw-ctr")
+        button(class="yhm" id="nextBtn") 下一步
+  script(src='/javascripts/common.js')      
+  script(src='/javascripts/index.js')
+  
+

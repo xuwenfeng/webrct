@@ -1,0 +1,9 @@
+build/
+node_modules/
+.idea
+.vscode/settings.json
+.DS_Store
+.package-lock.json
+.yarn.lock
+
+REMARK.md

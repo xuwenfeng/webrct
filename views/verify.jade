@@ -1,0 +1,10 @@
+extends layout
+
+block content
+  div.wrap
+    div.get-verify-wrap
+      input(type="text" id="gv-url" value="http://zhixing.court.gov.cn/search/captcha.do?captchaId=kxC4loOKcP6EiPyXnMkECmgOt1idGhld" class="gvw-url")
+      input(type="button" id="gv-btn" value="获取")
+    div.verify-list
+       ul#img-list-wrap
+   script(src='/javascripts/verify.js')

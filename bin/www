@@ -1,0 +1,342 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+var UUID = require('node-uuid');
+var app = require('../app');
+var debug = require('debug')('express:server');
+var https = require('https');
+var http = require('http');
+var WebSocket = require('ws');
+var fs = require('fs');
+var memberEntity = require('../src/entity/member');
+var member = require('../src/module/member');
+var room = require('../src/module/room');
+
+/**
+ * Get port from environment and store in Express.
+ */
+var port = normalizePort(process.env.PORT || '443');
+// var port8888 = normalizePort(process.env.PORT || '8888');
+app.set('port', port);
+// app.set('port', port8888);
+/**
+ * Create HTTP server.
+ */
+//同步读取密钥和签名证书
+var key,cert;
+key = './crt/gan.com.key';
+cert = './crt/gan.com.pem';
+
+var options = {
+  key:fs.readFileSync(key),
+  cert:fs.readFileSync(cert)
+}
+
+var server = https.createServer(options,app);
+// var server8888 = http.createServer(app);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+  console.log('成功创建express服务器');
+  console.log('https://127.0.0.1:443');
+}
+
+var sendMsg = function(client,name,content){
+  var d = new Date();
+  var _hours = d.getHours();
+  var _minutes = d.getMinutes();
+  var _seconds = d.getSeconds();
+  if(_hours < 10) _hours = '0' + _hours;
+  if(_minutes < 10) _minutes = '0' + _minutes;
+  if(_seconds < 10) _seconds = '0' + _seconds;
+  var _time = _hours + ":" + _minutes + ":" + _seconds; 
+  client.send(JSON.stringify({
+    type:'getMsg',
+    data:{
+      "content":content,
+      "name":name,
+      "time":_time
+    }
+  }));
+}
+
+//创建会议室
+var _room = new room();
+//创建会议人员
+var _member = new member();
+
+//创建websocket对象
+var socket = new WebSocket.Server({server:server});
+
+socket.on('open', function open() {
+  console.log('connected');
+});
+ 
+socket.on('close', function close() {
+  console.log('disconnected');
+});
+
+socket.on('connection', function connection(ws) {
+    ws.on('message', function incoming(data) {
+        var item = JSON.parse(data);
+        // start 显示日记
+        if(item.type != 'offer' && item.type != 'answer'){
+          console.log('received: %s', JSON.stringify(data));
+        }
+        // end 显示日记
+        switch(item.type){
+          case 'memberList':
+            var _roomName = item.data.roomName;
+            var _roomId = _room.getRoomIdByRoomName(_roomName);
+            if(_roomId != ""){
+              var _memberListTemp = _member.getMemberListByRoomId(_roomId);
+              if(_memberListTemp.length > 0){
+                ws.send(JSON.stringify({
+                  type:'memberList',
+                  data:_memberListTemp
+                }));
+              }
+            }
+          break;
+          //添加会议房价和会议人员
+          case 'addRoom':
+            //添加会议房间
+            var roomId = _room.getRoomByName(item.roomName);
+            if(!roomId){
+              roomId = _room.addRoom(item.roomName);
+              
+              socket.clients.forEach((client) => {
+                 sendMsg(client,'系统消息',item.userName + '刚刚创建了' + item.roomName + '房间');
+              });
+            }
+            var uuid = UUID.v4();
+            var me = new memberEntity();
+            me.id = uuid;
+            me.roomId = roomId;
+            me.name = item.userName;
+            me.token = item.token;
+ 
+            //是否有同名的加入
+            if(_member.hasMemberByName(item.userName)){
+               ws.send(JSON.stringify({
+                 type:'hasSameMember',
+                 data:false
+               }));
+               return false;
+            };
+            
+            _member.addMember(me);
+            //标记uuid
+            ws.uuid = uuid;
+            ws.roomId = roomId;
+            socket.clients.forEach((client) => {
+              if(client.uuid != undefined && client.uuid != uuid && client.roomId == roomId){
+                client.send(JSON.stringify({
+                  type:'addmember',
+                  data:me
+                }));
+              }
+              if(client.roomId == roomId){
+                sendMsg(client,'系统消息',item.userName + ' 加入会议');
+              }
+            });
+          
+     
+          break;
+
+          case 'ice_candidate':
+            var id = item.data.toMemberId;
+            socket.clients.forEach((client) => {
+              if(client.uuid == id && client.roomId == ws.roomId){
+                client.send(JSON.stringify({
+                  type:'ice_candidate',
+                  data:{
+                    candidate:item.data.candidate,
+                    toMemberId:ws.uuid
+                  }
+                }));
+              }
+            });
+          break;
+          case 'offer':
+             //获取offer人员的id;
+             var id = item.data.toMemberId;
+             socket.clients.forEach((client) => {
+               if(client.uuid == id && client.roomId == ws.roomId){
+                 client.send(JSON.stringify({
+                   type:'offer',
+                   data:{
+                     sdp: item.data.sdp,
+                     toMemberId:ws.uuid
+                   }
+                 }));
+               }
+             });
+          break;
+          case 'answer':
+            //获取offer人员的id;
+            var id = item.data.toMemberId;
+            socket.clients.forEach((client) => {
+              if(client.uuid == id && client.roomId == ws.roomId){
+                client.send(JSON.stringify({
+                  type:'answer',
+                  data:{
+                    sdp: item.data.sdp,
+                    toMemberId: ws.uuid
+                  }
+                }));
+              }
+            });
+          break;
+          case 'close':
+             var id = ws.uuid;
+             var _name = _member.getMemberNameById(id);
+             var _num = _member.removeMember(id); 
+            //删除页面元素
+            socket.clients.forEach((client) => {
+              if(client.roomId == ws.roomId){
+                
+                client.send(JSON.stringify({
+                  type:'getMsg',
+                  data:{
+                    "content":_name + ' 离开会议',
+                    "name":'系统消息'
+                  }
+                }));
+              }
+              if(client.uuid != id && client.roomId == ws.roomId){
+                client.send(JSON.stringify({
+                  type:'deleteMember',
+                  data:{
+                    "id": id
+                  }
+                }));
+              }
+              
+            })
+          break;
+          case 'sendMsg':
+            var _name = _member.getMemberNameById(ws.uuid);
+     
+            socket.clients.forEach((client) => {
+              if(ws.uuid != client.uuid && client.roomId == ws.roomId){
+                sendMsg(client,_name,item.data.content);
+              }
+            })
+          break;
+          case 'videoClose':
+            socket.clients.forEach((client) => {
+              if(ws.uuid != client.uuid && client.roomId == ws.roomId){
+                client.send(JSON.stringify({
+                  type:'videoClose',
+                  data:{
+                    "id": ws.uuid
+                  }
+                }));
+              }
+            });
+          break;
+          case 'videoOpen':
+            socket.clients.forEach((client) => {
+              if(ws.uuid != client.uuid && client.roomId == ws.roomId){
+                client.send(JSON.stringify({
+                  type:'videoOpen',
+                  data:{
+                    "id": ws.uuid
+                  }
+                }));
+              }
+            });
+          break;
+
+          case 'addStream':
+            socket.clients.forEach((client) => {
+              client.send({
+                type:'addServerStream',
+                data:{
+                  "stream": item.data.stream
+                }
+              });
+            });  
+          break;
+        }
+        
+    });
+});
+
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+// server8888.listen(port8888);
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+
+
+
+
+
+
